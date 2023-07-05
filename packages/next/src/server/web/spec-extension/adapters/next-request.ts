@@ -1,33 +1,55 @@
 import type { BaseNextRequest } from '../../../base-http'
 import type { NodeNextRequest } from '../../../base-http/node'
 import type { WebNextRequest } from '../../../base-http/web'
-import type { IncomingMessage } from 'node:http'
+import type { ServerResponse } from 'node:http'
 
 import { getRequestMeta } from '../../../request-meta'
 import { fromNodeOutgoingHttpHeaders } from '../../utils'
 import { NextRequest } from '../request'
 
-export function signalFromNodeRequest(request: IncomingMessage) {
-  const { errored } = request
-  if (errored) return AbortSignal.abort(errored)
+// It's not possible to detect a client abort from the request object, but it
+// is possible to detect when they close their end of the response.
+export function signalFromNodeResponse(res: ServerResponse) {
+  const { errored, closed } = res
+  if (errored || closed) return AbortSignal.abort(errored || undefined)
+
   const controller = new AbortController()
-  request.on('error', (e) => {
-    controller.abort(e)
-  })
+
+  // If finish fires, then `res.end()` has been called already. If close fires
+  // first, then we know the client disconnected before we finished.
+  function onClose() {
+    controller.abort()
+    res.off('finish', onFinish)
+  }
+  function onFinish() {
+    res.off('close', onClose)
+  }
+  res.once('close', onClose)
+  res.once('finish', onFinish)
+
   return controller.signal
 }
 
 export class NextRequestAdapter {
-  public static fromBaseNextRequest(request: BaseNextRequest): NextRequest {
+  public static fromBaseNextRequest(
+    request: BaseNextRequest,
+    signal: AbortSignal
+  ): NextRequest {
     // TODO: look at refining this check
     if ('request' in request && (request as WebNextRequest).request) {
       return NextRequestAdapter.fromWebNextRequest(request as WebNextRequest)
     }
 
-    return NextRequestAdapter.fromNodeNextRequest(request as NodeNextRequest)
+    return NextRequestAdapter.fromNodeNextRequest(
+      request as NodeNextRequest,
+      signal
+    )
   }
 
-  public static fromNodeNextRequest(request: NodeNextRequest): NextRequest {
+  public static fromNodeNextRequest(
+    request: NodeNextRequest,
+    signal: AbortSignal
+  ): NextRequest {
     // HEAD and GET requests can not have a body.
     let body: BodyInit | null = null
     if (request.method !== 'GET' && request.method !== 'HEAD' && request.body) {
@@ -57,7 +79,7 @@ export class NextRequestAdapter {
       headers: fromNodeOutgoingHttpHeaders(request.headers),
       // @ts-expect-error - see https://github.com/whatwg/fetch/pull/1457
       duplex: 'half',
-      signal: signalFromNodeRequest(request.originalRequest),
+      signal,
       // geo
       // ip
       // nextConfig
