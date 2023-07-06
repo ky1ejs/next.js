@@ -19,6 +19,7 @@ export function signalFromNodeResponse(res: ServerResponse) {
   // first, then we know the client disconnected before we finished.
   function onClose() {
     controller.abort()
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     res.off('finish', onFinish)
   }
   function onFinish() {
