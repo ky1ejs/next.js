@@ -1535,7 +1535,7 @@ export default class NextNodeServer extends BaseServer {
 
             const { originalResponse } = res as NodeNextResponse
             for await (const chunk of invokeRes) {
-              if (originalResponse.closed) break
+              if (originalResponse.destroyed) break
               this.streamResponseChunk(originalResponse, chunk)
             }
             res.send()
@@ -2558,7 +2558,7 @@ export default class NextNodeServer extends BaseServer {
                   const { originalResponse } = res as NodeNextResponse
                   for await (const chunk of result.response.body ||
                     ([] as any)) {
-                    if (originalResponse.closed) break
+                    if (originalResponse.destroyed) break
                     this.streamResponseChunk(originalResponse, chunk)
                   }
                   res.send()
@@ -2734,7 +2734,7 @@ export default class NextNodeServer extends BaseServer {
               const body =
                 (result.response as any).invokeRes || result.response.body || []
               for await (const chunk of body) {
-                if (originalResponse.closed) break
+                if (originalResponse.destroyed) break
                 this.streamResponseChunk(originalResponse, chunk)
               }
               res.send()
@@ -2931,7 +2931,7 @@ export default class NextNodeServer extends BaseServer {
         for await (const chunk of consumeUint8ArrayReadableStream(
           result.response.body
         )) {
-          if (nodeResStream.closed) break
+          if (nodeResStream.destroyed) break
           nodeResStream.write(chunk)
         }
       } finally {

@@ -16,7 +16,7 @@ export interface PipeTarget {
   end: () => unknown
   flush?: () => unknown
   destroy: (err?: Error) => unknown
-  get closed(): boolean
+  get destroyed(): boolean
 }
 
 export default class RenderResult {
@@ -116,7 +116,7 @@ export default class RenderResult {
       while (true) {
         const result = await reader.read()
 
-        if (res.closed || result.done) {
+        if (res.destroyed || result.done) {
           break
         }
 
@@ -130,7 +130,7 @@ export default class RenderResult {
       // We're done writing to the response, so we can end it.
       res.end()
     } catch (err) {
-      if (!res.closed) {
+      if (!res.destroyed) {
         res.destroy(err as any)
       }
 

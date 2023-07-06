@@ -49,7 +49,7 @@ export async function sendResponse(
       const iterator = consumeUint8ArrayReadableStream(response.body)
       try {
         for await (const chunk of iterator) {
-          if (originalResponse.closed) break
+          if (originalResponse.destroyed) break
           originalResponse.write(chunk)
         }
       } finally {

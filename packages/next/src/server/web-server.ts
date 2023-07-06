@@ -421,10 +421,10 @@ export default class NextWebServer extends BaseServer<WebServerOptions> {
         write: (chunk: Uint8Array) => writer.write(chunk),
         end: () => writer.close(),
         destroy: (err: Error) => writer.abort(err),
-        closed: false,
+        destroyed: false,
       } as any
       const onClose = () => {
-        target.closed = true
+        target.destroyed = true
       }
       // No, this cannot be replaced with `finally`, because early cancelling
       // the stream will create a rejected promise, and finally will create an

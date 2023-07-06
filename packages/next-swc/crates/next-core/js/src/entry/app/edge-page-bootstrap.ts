@@ -84,10 +84,10 @@ async function render(request: NextRequest, event: NextFetchEvent) {
     write: (chunk: Uint8Array) => writer.write(chunk),
     end: () => writer.close(),
     destroy: (reason?: Error) => writer.abort(reason),
-    closed: false,
+    destroyed: false,
   }
   const onClose = () => {
-    target.closed = true
+    target.destroyed = true
   }
   // No, this cannot be replaced with `finally`, because early cancelling
   // the stream will create a rejected promise, and finally will create an
