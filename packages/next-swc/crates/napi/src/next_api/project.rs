@@ -8,7 +8,11 @@ use next_api::{
 };
 use turbo_tasks::{TurboTasks, Vc};
 use turbopack_binding::{
-    turbo::tasks_memory::MemoryBackend, turbopack::core::error::PrettyPrintError,
+    turbo::{tasks::TryJoinIterExt, tasks_memory::MemoryBackend},
+    turbopack::core::{
+        diagnostics::{Diagnostic, DiagnosticContextExt},
+        error::PrettyPrintError,
+    },
 };
 
 use super::{
@@ -180,12 +184,27 @@ pub fn project_entrypoints_subscribe(
         func,
         move || async move {
             let entrypoints = project.entrypoints();
+            let captured_diags = entrypoints.peek_diagnostics().await?;
+
             let entrypoints = entrypoints.strongly_consistent().await?;
+            let captured_diags = captured_diags.strongly_consistent().await?;
+
+            let diags = captured_diags
+                .diagnostics
+                .iter()
+                .map(|d| d.into_plain())
+                .try_join()
+                .await?
+                .iter()
+                .map(|d| NapiDiagnostic::from(&d))
+                .collect::<Vec<NapiDiagnostic>>();
+
             // TODO peek_issues and diagnostics
-            Ok(entrypoints)
+            Ok((entrypoints, diags))
         },
         move |ctx| {
-            let entrypoints = ctx.value;
+            let (entrypoints, diags) = ctx.value;
+
             Ok(vec![NapiEntrypoints {
                 routes: entrypoints
                     .routes
@@ -200,7 +219,7 @@ pub fn project_entrypoints_subscribe(
                     .map(|m| NapiMiddleware::from_middleware(m, &turbo_tasks))
                     .transpose()?,
                 issues: vec![],
-                diagnostics: vec![],
+                diagnostics: diags,
             }])
         },
     )
