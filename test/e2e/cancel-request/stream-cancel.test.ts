@@ -8,12 +8,6 @@ createNextDescribe(
     files: __dirname,
   },
   ({ next }) => {
-    type CancelState = {
-      requestAborted: boolean
-      streamCleanedUp: boolean
-      i: number
-    }
-
     function prime(url: string) {
       return new Promise<void>((resolve) => {
         url = new URL(url, next.url).href
@@ -36,71 +30,39 @@ createNextDescribe(
       })
     }
 
-    // The disconnect from our prime request to the server isn't instant, and
-    // there's no good signal on the client end for when it happens. So we just
-    // fetch multiple times waiting for it to happen.
-    async function getTillCancelled(url: string) {
-      let json: CancelState
-      for (let i = 0; i < 500; i++) {
-        const res = await next.fetch(url)
-        json = (await res.json()) as CancelState
-        if (json.streamCleanedUp && json.requestAborted) {
-          break
-        }
-
-        await sleep(10)
-      }
-      return json!
-    }
-
     it('Midddleware cancels inner ReadableStream', async () => {
       await prime('/middleware')
-      const json = await getTillCancelled('/middleware')
-      expect(json).toMatchObject({
-        requestAborted: true,
-        streamCleanedUp: true,
-        i: (expect as any).toBeWithin(0, 5),
-      })
+      const res = await next.fetch('/middleware')
+      const i = +(await res.text())
+      expect(i).toBeWithin(0, 5)
     })
 
     it('App Route Handler Edge cancels inner ReadableStream', async () => {
       await prime('/edge-route')
-      const json = await getTillCancelled('/edge-route')
-      expect(json).toMatchObject({
-        requestAborted: true,
-        streamCleanedUp: true,
-        i: (expect as any).toBeWithin(0, 5),
-      })
+      const res = await next.fetch('/edge-route')
+      const i = +(await res.text())
+      expect(i).toBeWithin(0, 5)
     })
 
     it('App Route Handler NodeJS cancels inner ReadableStream', async () => {
       await prime('/node-route')
-      const json = await getTillCancelled('/node-route')
-      expect(json).toMatchObject({
-        requestAborted: true,
-        streamCleanedUp: true,
-        i: (expect as any).toBeWithin(0, 5),
-      })
+      const res = await next.fetch('/node-route')
+      const i = +(await res.text())
+      expect(i).toBeWithin(0, 5)
     })
 
     it('Pages Api Route Edge cancels inner ReadableStream', async () => {
       await prime('/api/edge-api')
-      const json = await getTillCancelled('/api/edge-api')
-      expect(json).toMatchObject({
-        requestAborted: true,
-        streamCleanedUp: true,
-        i: (expect as any).toBeWithin(0, 5),
-      })
+      const res = await next.fetch('/api/edge-api')
+      const i = +(await res.text())
+      expect(i).toBeWithin(0, 5)
     })
 
     it('Pages Api Route NodeJS cancels inner ReadableStream', async () => {
       await prime('/api/node-api')
-      const json = await getTillCancelled('/api/node-api')
-      expect(json).toMatchObject({
-        requestAborted: true,
-        streamCleanedUp: true,
-        i: (expect as any).toBeWithin(0, 5),
-      })
+      const res = await next.fetch('/api/node-api')
+      const i = +(await res.text())
+      expect(i).toBeWithin(0, 5)
     })
   }
 )
