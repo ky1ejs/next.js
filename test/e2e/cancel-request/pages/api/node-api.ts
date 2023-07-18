@@ -20,9 +20,11 @@ export default function handler(
   // The 2nd request should render the stats. We don't use a query param
   // because edge rendering will create a different bundle for that.
   if (readable) {
-    Promise.all([requestAborted, readable.streamCleanedUp]).finally(() => {
-      res.end(`${readable.i}`)
-    })
+    Promise.all([requestAborted.promise, readable.streamCleanedUp]).finally(
+      () => {
+        res.end(`${readable.i}`)
+      }
+    )
     return
   }
 

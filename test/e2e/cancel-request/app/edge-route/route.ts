@@ -14,7 +14,7 @@ export async function GET(req: Request): Promise<Response> {
   // The 2nd request should render the stats. We don't use a query param
   // because edge rendering will create a different bundle for that.
   if (streamable) {
-    await Promise.all([requestAborted, streamable.streamCleanedUp])
+    await Promise.all([requestAborted.promise, streamable.streamCleanedUp])
     return new Response(`${streamable.i}`)
   }
 
